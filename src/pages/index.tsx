@@ -1,18 +1,52 @@
 import { type NextPage } from "next";
+import { useEffect, useState } from "react";
 import { api } from "~/utils/api";
+import { z } from "zod";
+import { Input } from "~/components/ui/input";
+import { Button } from "~/components/ui/button";
+// crate empty array string with length 6
+const answers_raw = Array.from({ length: 6 }, () => "");
+const answerSchema = z.array(z.string().min(1).max(20)).length(6);
+const modeSchema = z.enum(["comfy", "unlimited"]);
 
 const Home: NextPage = () => {
   const hello = api.example.hello.useQuery({ text: "from tRPC" });
+  const [answers, setAnswers] = useState(answers_raw);
+  const [mode, setMode] = useState<"comfy" | "unlimited">("comfy");
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    const mode_raw = localStorage.getItem("mode");
+    const parsedMode = modeSchema.safeParse(mode_raw);
+    // if mode is not valid, set it to comfy
+    if (!parsedMode.success) {
+      localStorage.setItem("mode", "comfy");
+    } else {
+      setMode(parsedMode.data);
+    }
+    const answers_raw = localStorage.getItem("answers");
+    const parsedAnswers = answerSchema.safeParse(answers_raw);
+    if (!parsedAnswers.success) return;
+    setAnswers(parsedAnswers.data);
+  }, []);
 
   return (
     <>
       <div className="m-2 mx-auto flex max-w-4xl flex-col items-center gap-5 rounded-lg bg-zinc-50 p-3 dark:bg-zinc-900">
+        <h2 className="text-2xl font-bold">{hello.data?.greeting}</h2>
         <img src="testing.webp" className="w-[50%] max-w-lg" />
         <div className="mx-auto w-[100%] max-w-[200px]">
           <ul>
-            <li>UWU3</li>
-            <li>UWU2</li>
-            <li>UWU1</li>
+            {answers.map((answer, i) => (
+              <li
+                className="h-8 border-b  border-b-slate-400 text-center leading-3 dark:border-b-zinc-600"
+                key={i}
+              >
+                <p>{answer}</p>
+              </li>
+            ))}
           </ul>
           {/* {answers.map((answer, i) => (
             <div key={i}>
@@ -26,13 +60,13 @@ const Home: NextPage = () => {
             e.preventDefault();
             console.log("UWU");
           }}
-          className="flex flex-col items-center"
+          className="flex flex-col items-center gap-2"
         >
-          <input />
-          <div>
-            <button>submit</button>
-            <button>next</button>
-            <button>skip</button>
+          <Input />
+          <div className="flex gap-1">
+            <Button variant="outline">Jawab</Button>
+            <Button variant="ghost">Lewati</Button>
+            {/* <Button>skip</Button> */}
           </div>
           {/* <TextField onChange={handleChange} label={t("TYPE_HERE")}>
             {input}
