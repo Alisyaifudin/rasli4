@@ -3,6 +3,7 @@ import { api } from "~/utils/api";
 import "~/styles/globals.css";
 import { ThemeProvider } from "next-themes";
 import Layout from "~/layouts/Layout";
+import { Toaster } from "~/components/ui/toaster";
 
 const MyApp: AppType = ({ Component, pageProps }) => {
   return (
@@ -10,6 +11,7 @@ const MyApp: AppType = ({ Component, pageProps }) => {
       <Layout>
         <Component {...pageProps} />
       </Layout>
+      <Toaster/>
     </ThemeProvider>
   );
 };

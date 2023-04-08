@@ -1,19 +1,24 @@
-import React from "react";
+import { useContext } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
+import { useAppDispatch, useAppSelector } from "~/hooks/redux";
+import { setMode } from "~/store/metaSlice";
 
-interface ModeProps {
-  mode: "comfy" | "unlimited";
-  onChange: (mode: "comfy" | "unlimited") => void;
-}
+function ModeTab() {
+  const mode = useAppSelector((state) => state.meta.mode);
+  const dispatch = useAppDispatch();
 
-function ModeTab({ mode, onChange }: ModeProps) {
   const handleChange = (value: string) => {
     if (["comfy", "unlimited"].includes(value)) {
-      onChange(value as "comfy" | "unlimited");
+      const val = value as "comfy" | "unlimited";
+      dispatch(setMode(val));
     }
   };
   return (
-    <Tabs onValueChange={handleChange} value={mode} className="w-[400px]">
+    <Tabs
+      onValueChange={handleChange}
+      value={mode}
+      className="w-full sm:w-[400px]"
+    >
       <TabsList>
         <TabsTrigger value="comfy">Comfy</TabsTrigger>
         <TabsTrigger value="unlimited">Unlimited</TabsTrigger>

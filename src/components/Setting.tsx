@@ -10,12 +10,7 @@ import {
 import { CONST } from "~/utils/constant";
 import ModeTab from "./ModeTab";
 
-interface SettingProps {
-  mode: "comfy" | "unlimited";
-  onModeChange: (mode: "comfy" | "unlimited") => void;
-}
-
-export default function SettingComponent({ mode, onModeChange }: SettingProps) {
+export default function SettingComponent() {
   return (
     <Dialog>
       <DialogTrigger asChild>
@@ -29,7 +24,7 @@ export default function SettingComponent({ mode, onModeChange }: SettingProps) {
         </DialogHeader>
         <div className="text-black dark:text-white">
           <div className="flex flex-col gap-2">
-            <ModeTab mode={mode} onChange={onModeChange} />
+            <ModeTab/>
             <p>
               RASLI adalah game menebak rasi bintang, terinspirasi dari game
               wordle.

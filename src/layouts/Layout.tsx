@@ -1,12 +1,124 @@
 import Head from "next/head";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import Navbar from "~/components/Navbar";
+import Spinner from "~/components/Spinner";
+import { useAppDispatch } from "~/hooks/redux";
+import {
+  modeSchema,
+  answerSchema as answerSchemaRaw,
+  doneSchema as doneSchemaRaw,
+  historySchema as historySchemaRaw,
+} from "~/store/metaSlice";
+import {
+  setMode,
+  setAnswers,
+  setHistory,
+  setDone,
+  setPuzzle,
+  setSeed,
+  setResult,
+} from "~/store/metaSlice";
+import { store } from "~/store/store";
+import { Provider } from "react-redux";
+import { api } from "~/utils/api";
+import { z } from "zod";
+
+const answerSchema = z.object({
+  comfy: answerSchemaRaw,
+  unlimited: answerSchemaRaw,
+});
+const doneSchema = z.object({
+  comfy: doneSchemaRaw,
+  unlimited: doneSchemaRaw,
+});
+const historySchema = z.object({
+  comfy: historySchemaRaw,
+  unlimited: historySchemaRaw,
+});
+const puzzleSchema = z.object({
+  comfy: z.string(),
+  unlimited: z.string(),
+});
+const resultSchema = puzzleSchema;
 
 interface LayoutProps {
   children: React.ReactNode;
 }
 
 function Layout({ children }: LayoutProps) {
+  const [mounted, setMounted] = useState(false);
+  const { data: dailyPuzzle } = api.puzzle.getDailyPuzzle.useQuery();
+  const dispatch = useAppDispatch();
+  useEffect(() => {
+    if (typeof window === "undefined" || !dailyPuzzle?.name) {
+      return;
+    }
+    // Mode
+    const mode_raw = localStorage.getItem("mode");
+    const parsedMode = modeSchema.safeParse(mode_raw);
+    if (!parsedMode.success) {
+      localStorage.setItem("mode", "comfy");
+    } else {
+      dispatch(setMode(parsedMode.data));
+    }
+    // History
+    const history_raw = localStorage.getItem("history") ?? "{}";
+    const parsedHistory = historySchema.safeParse(JSON.parse(history_raw));
+    if (parsedHistory.success) {
+      dispatch(setHistory(parsedHistory.data));
+    }
+    // dailypuzzle
+    const puzzle_raw = localStorage.getItem("puzzle");
+    const parsedPuzzle = puzzleSchema.safeParse(puzzle_raw);
+    let reset = false;
+    if (parsedPuzzle.success && dailyPuzzle.name !== parsedPuzzle.data.comfy) {
+      reset = true;
+    }
+    dispatch(setPuzzle({ puzzle: dailyPuzzle.name, mode: "comfy" }));
+    // Answers
+    const answers_raw = localStorage.getItem("answers") ?? "{}";
+    const parsedAnswers = answerSchema.safeParse(JSON.parse(answers_raw));
+    if (parsedAnswers.success) {
+      if (reset)
+        dispatch(
+          setAnswers({
+            comfy: Array(6).fill(""),
+            unlimited: Array(6).fill(""),
+          })
+        );
+      else dispatch(setAnswers(parsedAnswers.data));
+    }
+    // Done
+    const done_raw = localStorage.getItem("done") ?? "{}";
+    const parsedDone = doneSchema.safeParse(JSON.parse(done_raw));
+    if (parsedDone.success) {
+      if (reset) dispatch(setDone({ comfy: false, unlimited: false }));
+      else dispatch(setDone(parsedDone.data));
+    }
+    // result
+    const result = localStorage.getItem("result") ?? "{}";
+    const parseResult = resultSchema.safeParse(JSON.parse(result));
+    console.log(parseResult);
+    if (parseResult.success) {
+      if (reset)
+        dispatch(
+          setResult({ comfy: "", unlimited: parseResult.data.unlimited })
+        );
+      else dispatch(setResult(parseResult.data));
+    }
+    // seed
+    const seed = localStorage.getItem("seed") ?? Math.random().toString();
+    dispatch(setSeed(seed));
+    setMounted(true);
+  }, [dailyPuzzle]);
+
+  if (!mounted) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center">
+        <Spinner />
+      </div>
+    );
+  }
   return (
     <>
       <Head>
@@ -20,4 +132,10 @@ function Layout({ children }: LayoutProps) {
   );
 }
 
-export default Layout;
+export default function RootLayout({ children }: LayoutProps) {
+  return (
+    <Provider store={store}>
+      <Layout>{children}</Layout>
+    </Provider>
+  );
+}
