@@ -1,7 +1,6 @@
 import Head from "next/head";
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import Navbar from "~/components/Navbar";
-import Spinner from "~/components/Spinner";
 import { useAppDispatch } from "~/hooks/redux";
 import {
   modeSchema,
@@ -17,6 +16,7 @@ import {
   setPuzzle,
   setSeed,
   setResult,
+  setMounted,
 } from "~/store/metaSlice";
 import { store } from "~/store/store";
 import { Provider } from "react-redux";
@@ -46,7 +46,6 @@ interface LayoutProps {
 }
 
 function Layout({ children }: LayoutProps) {
-  const [mounted, setMounted] = useState(false);
   const { data: dailyPuzzle } = api.puzzle.getDailyPuzzle.useQuery();
   const dispatch = useAppDispatch();
   useEffect(() => {
@@ -109,16 +108,9 @@ function Layout({ children }: LayoutProps) {
     // seed
     const seed = localStorage.getItem("seed") ?? Math.random().toString();
     dispatch(setSeed(seed));
-    setMounted(true);
-  }, [dailyPuzzle]);
+    dispatch(setMounted(true));
+  }, [dailyPuzzle, dispatch]);
 
-  if (!mounted) {
-    return (
-      <div className="flex h-screen w-full items-center justify-center">
-        <Spinner />
-      </div>
-    );
-  }
   return (
     <>
       <Head>

@@ -25,7 +25,6 @@ interface State {
   done: Done;
   history: History;
   puzzle: string;
-  error: string;
   result: string;
 }
 
@@ -33,6 +32,7 @@ interface MetaState {
   mode: Mode;
   comfy: State;
   unlimited: State & { seed: string };
+  mounted: boolean;
 }
 
 // Define the initial state using that type
@@ -48,13 +48,13 @@ const initialValue = {
     currentStreak: 0,
     maxStreak: 0,
   },
-  error: "",
 };
 
 const initialState: MetaState = {
   mode: "comfy",
   comfy: initialValue,
   unlimited: { ...initialValue, seed: "" },
+  mounted: false,
 };
 
 export const counterSlice = createSlice({
@@ -63,7 +63,6 @@ export const counterSlice = createSlice({
   initialState,
   reducers: {
     setMode: (state, action: PayloadAction<Mode>) => {
-      state[state.mode].error = "";
       state.mode = action.payload;
       localStorage.setItem("mode", action.payload);
     },
@@ -162,10 +161,6 @@ export const counterSlice = createSlice({
         })
       );
     },
-    setError: (state, action: PayloadAction<{ error: string; mode: Mode }>) => {
-      const { error, mode } = action.payload;
-      state[mode].error = error;
-    },
     setSeed: (state, action: PayloadAction<string>) => {
       state.unlimited.seed = action.payload;
       localStorage.setItem("seed", action.payload);
@@ -217,7 +212,6 @@ export const counterSlice = createSlice({
           unlimited: state.unlimited.done,
         })
       );
-      state[mode].error = "";
       state[mode].puzzle = "";
       localStorage.setItem(
         "puzzle",
@@ -240,6 +234,9 @@ export const counterSlice = createSlice({
         localStorage.setItem("seed", seed);
       }
     },
+    setMounted: (state, action: PayloadAction<boolean>) => {
+      state.mounted = action.payload;
+    },
   },
 });
 
@@ -251,11 +248,11 @@ export const {
   setDone,
   setPuzzle,
   finishGame,
-  setError,
   setSeed,
   setResult,
   setResultMode,
   reset,
+  setMounted,
 } = counterSlice.actions;
 
 export default counterSlice.reducer;

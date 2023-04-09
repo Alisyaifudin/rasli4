@@ -7,6 +7,9 @@ export default {
   darkMode: "class",
   theme: {
     extend: {
+      screens: {
+        xs: "450px",
+      },
       fontFamily: {
         sans: [...fontFamily.sans],
       },

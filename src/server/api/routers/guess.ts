@@ -20,9 +20,6 @@ export const guessRouter = createTRPCRouter({
     )
     .mutation(async ({ input, ctx }) => {
       // transform guess to capitalize each first letter words
-      const today = new Date();
-      const date = today.toDateString();
-      const seed = input.seed ?? date;
       const guessTransform = capitalizeWords(input.guess);
       const findConstellation = await ctx.prisma.constellation.findUnique({
         where: { name: guessTransform },
@@ -36,8 +33,7 @@ export const guessRouter = createTRPCRouter({
       }
       const mysteryConstellation = decryptString(
         input.puzzle,
-        env.ENCRYPTION_KEY,
-        seed
+        env.ENCRYPTION_KEY
       );
       if (mysteryConstellation === guessTransform) {
         return {

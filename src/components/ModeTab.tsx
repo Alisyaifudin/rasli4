@@ -1,4 +1,3 @@
-import { useContext } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { useAppDispatch, useAppSelector } from "~/hooks/redux";
 import { setMode } from "~/store/metaSlice";

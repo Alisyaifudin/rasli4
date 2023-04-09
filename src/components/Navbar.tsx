@@ -3,12 +3,10 @@ import { CONST } from "~/utils/constant";
 import ThemeButton from "~/components/ThemeButton";
 import Info from "~/components/Info";
 import Setting from "~/components/Setting";
-import { useState, useContext } from "react";
-import { LocalContext } from "~/layouts/Layout";
 
 function Navbar() {
   return (
-    <nav className="sticky top-0 bg-blue-500 p-2 text-white dark:bg-zinc-900">
+    <nav className="sticky z-50 top-0 bg-blue-500 p-2 text-white dark:bg-zinc-900">
       <div className="mx-auto flex max-w-4xl items-center justify-between">
         <div className="flex gap-4">
           <Info />
