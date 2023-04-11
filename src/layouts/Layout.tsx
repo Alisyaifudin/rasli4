@@ -1,12 +1,15 @@
 import Head from "next/head";
 import React, { useEffect } from "react";
 import Navbar from "~/components/Navbar";
-import { useAppDispatch } from "~/hooks/redux";
+import { useAppDispatch, useAppSelector } from "~/hooks/redux";
 import {
   modeSchema,
   answerSchema as answerSchemaRaw,
   doneSchema as doneSchemaRaw,
   historySchema as historySchemaRaw,
+  type Mode,
+  setRotation,
+  reset,
 } from "~/store/metaSlice";
 import {
   setMode,
@@ -20,7 +23,6 @@ import {
 } from "~/store/metaSlice";
 import { store } from "~/store/store";
 import { Provider } from "react-redux";
-import { api } from "~/utils/api";
 import { z } from "zod";
 
 const answerSchema = z.object({
@@ -35,7 +37,7 @@ const historySchema = z.object({
   comfy: historySchemaRaw,
   unlimited: historySchemaRaw,
 });
-const puzzleSchema = z.object({
+export const puzzleSchema = z.object({
   comfy: z.string(),
   unlimited: z.string(),
 });
@@ -46,70 +48,22 @@ interface LayoutProps {
 }
 
 function Layout({ children }: LayoutProps) {
-  const { data: dailyPuzzle } = api.puzzle.getDailyPuzzle.useQuery();
   const dispatch = useAppDispatch();
+  const mounted = useAppSelector((state) => state.meta.mounted);
   useEffect(() => {
-    if (typeof window === "undefined" || !dailyPuzzle?.name) {
+    if (typeof window === "undefined") {
       return;
     }
-    // Mode
-    const mode_raw = localStorage.getItem("mode");
-    const parsedMode = modeSchema.safeParse(mode_raw);
-    if (!parsedMode.success) {
-      localStorage.setItem("mode", "comfy");
-    } else {
-      dispatch(setMode(parsedMode.data));
-    }
-    // History
-    const history_raw = localStorage.getItem("history") ?? "{}";
-    const parsedHistory = historySchema.safeParse(JSON.parse(history_raw));
-    if (parsedHistory.success) {
-      dispatch(setHistory(parsedHistory.data));
-    }
-    // dailypuzzle
-    const puzzle_raw = localStorage.getItem("puzzle");
-    const parsedPuzzle = puzzleSchema.safeParse(puzzle_raw);
-    let reset = false;
-    if (parsedPuzzle.success && dailyPuzzle.name !== parsedPuzzle.data.comfy) {
-      reset = true;
-    }
-    dispatch(setPuzzle({ puzzle: dailyPuzzle.name, mode: "comfy" }));
-    // Answers
-    const answers_raw = localStorage.getItem("answers") ?? "{}";
-    const parsedAnswers = answerSchema.safeParse(JSON.parse(answers_raw));
-    if (parsedAnswers.success) {
-      if (reset)
-        dispatch(
-          setAnswers({
-            comfy: Array(6).fill(""),
-            unlimited: Array(6).fill(""),
-          })
-        );
-      else dispatch(setAnswers(parsedAnswers.data));
-    }
-    // Done
-    const done_raw = localStorage.getItem("done") ?? "{}";
-    const parsedDone = doneSchema.safeParse(JSON.parse(done_raw));
-    if (parsedDone.success) {
-      if (reset) dispatch(setDone({ comfy: false, unlimited: false }));
-      else dispatch(setDone(parsedDone.data));
-    }
-    // result
-    const result = localStorage.getItem("result") ?? "{}";
-    const parseResult = resultSchema.safeParse(JSON.parse(result));
-    console.log(parseResult);
-    if (parseResult.success) {
-      if (reset)
-        dispatch(
-          setResult({ comfy: "", unlimited: parseResult.data.unlimited })
-        );
-      else dispatch(setResult(parseResult.data));
-    }
-    // seed
-    const seed = localStorage.getItem("seed") ?? Math.random().toString();
-    dispatch(setSeed(seed));
+    initialization(dispatch);
+    // mounted
     dispatch(setMounted(true));
-  }, [dailyPuzzle, dispatch]);
+  }, [dispatch]);
+
+  useEffect(() => {
+    if (!mounted) return;
+    console.log("mounted", mounted);
+    nuke(dispatch);
+  }, [mounted, dispatch]);
 
   return (
     <>
@@ -130,4 +84,72 @@ export default function RootLayout({ children }: LayoutProps) {
       <Layout>{children}</Layout>
     </Provider>
   );
+}
+
+function initialization(dispatch: ReturnType<typeof useAppDispatch>) {
+  // Mode
+  const mode_raw = localStorage.getItem("mode");
+  const parsedMode = modeSchema.safeParse(mode_raw);
+  let mode: Mode = "comfy";
+  if (!parsedMode.success) {
+    localStorage.setItem("mode", "comfy");
+  } else {
+    dispatch(setMode(parsedMode.data));
+    mode = parsedMode.data;
+  }
+  // History
+  const history_raw = localStorage.getItem("history") ?? "{}";
+  const parsedHistory = historySchema.safeParse(JSON.parse(history_raw));
+  if (parsedHistory.success) {
+    dispatch(setHistory(parsedHistory.data));
+  }
+  // dailypuzzle
+  const puzzle_raw = localStorage.getItem("puzzle");
+  const parsedPuzzle = puzzleSchema.safeParse(puzzle_raw);
+  if (parsedPuzzle.success) {
+    dispatch(setPuzzle({ puzzle: parsedPuzzle.data[mode], mode }));
+  }
+  // Answers
+  const answers_raw = localStorage.getItem("answers") ?? "{}";
+  const parsedAnswers = answerSchema.safeParse(JSON.parse(answers_raw));
+  if (parsedAnswers.success) {
+    dispatch(setAnswers(parsedAnswers.data));
+  }
+  // Done
+  const done_raw = localStorage.getItem("done") ?? "{}";
+  const parsedDone = doneSchema.safeParse(JSON.parse(done_raw));
+  if (parsedDone.success) {
+    dispatch(setDone(parsedDone.data));
+  }
+  // result
+  const result = localStorage.getItem("result") ?? "{}";
+  const parseResult = resultSchema.safeParse(JSON.parse(result));
+  if (parseResult.success) {
+    dispatch(setResult(parseResult.data));
+  }
+  // seed
+  const seed = localStorage.getItem("seed") ?? Math.random().toString();
+  dispatch(setSeed(seed));
+  // rotation
+  const rotation = localStorage.getItem("rotation") ?? Math.random().toString();
+  dispatch(setRotation(rotation));
+}
+
+function nuke(dispatch: ReturnType<typeof useAppDispatch>) {
+  // Answers
+  const answers_raw = localStorage.getItem("answers") ?? "{}";
+  const parsedAnswers = answerSchema.safeParse(JSON.parse(answers_raw));
+  console.log(parsedAnswers);
+  if (!parsedAnswers.success) {
+    dispatch(reset("comfy"));
+    dispatch(reset("unlimited"));
+  }
+  // Done
+  const done_raw = localStorage.getItem("done") ?? "{}";
+  const parsedDone = doneSchema.safeParse(JSON.parse(done_raw));
+  console.log(parsedDone);
+  if (!parsedDone.success) {
+    dispatch(reset("comfy"));
+    dispatch(reset("unlimited"));
+  }
 }

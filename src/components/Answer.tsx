@@ -22,20 +22,17 @@ function Answer({ mounted, mode }: AnswerProps) {
   // selector
   const done = useAppSelector((state) => state.meta[mode].done);
   const answers = useAppSelector((state) => state.meta[mode].answers);
-  const dailyPuzzle = useAppSelector((state) => state.meta[mode].puzzle);
-  const seed = useAppSelector((state) => state.meta.unlimited.seed);
+  const puzzle = useAppSelector((state) => state.meta[mode].puzzle);
+  const num = useAppSelector((state) => state.meta[mode].num);
+  const seed = useAppSelector((state) => state.meta.seed);
   // local state
   const [error, setError] = React.useState("");
   const [answer, setAnswer] = React.useState("");
-  // useEffect
-  useEffect(() => {
-    setError("");
-    setAnswer("");
-  }, [mode]);
+  const [won, setWon] = React.useState(false);
   //   toast
   const { toast } = useToast();
   //   trpc hooks
-  const unlimitedPuzzle = api.puzzle.getPuzzle.useQuery(seed);
+  // const unlimitedPuzzle = api.puzzle.getPuzzle.useQuery(seed);
   const mutation = api.guess.submit.useMutation({
     onSuccess: (data) => {
       if (data.correct) {
@@ -43,9 +40,15 @@ function Answer({ mounted, mode }: AnswerProps) {
           title: "Benar",
           variant: "success",
         });
-        setError("");
+        setError("Keren 🥳");
+        setWon(true);
         dispatch(finishGame(mode));
-        dispatch(submitAnswer({ answer, mode }));
+        dispatch(
+          submitAnswer({
+            answer: { name: answer, closeness: -1 },
+            mode,
+          })
+        );
         dispatch(setResultMode({ result: data.message, mode }));
         setAnswer("");
         return;
@@ -55,15 +58,27 @@ function Answer({ mounted, mode }: AnswerProps) {
           title: "Rasi tidak ada",
           variant: "destructive",
         });
-        setError(data.message);
+        setWon(false);
+        setError("Rasi tidak ada");
       } else if (data.code === "INCORRECT") {
         toast({
           title: "Salah",
           variant: "destructive",
         });
-        setError(data.message);
         setAnswer("");
-        dispatch(submitAnswer({ answer, mode }));
+        dispatch(
+          submitAnswer({
+            answer: { name: answer, closeness: data.closeness },
+            mode,
+          })
+        );
+        if (num < 5) {
+          setError("Rasi tidak cocok");
+        } else {
+          setError("Gagal 😭");
+          dispatch(setResultMode({ result: data.message, mode }));
+        }
+        setWon(false);
       }
     },
     onError: (err) => {
@@ -74,6 +89,11 @@ function Answer({ mounted, mode }: AnswerProps) {
       });
     },
   });
+  // useEffect
+  useEffect(() => {
+    setError("");
+    setAnswer("");
+  }, [mode, puzzle]);
   // handler
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -82,16 +102,18 @@ function Answer({ mounted, mode }: AnswerProps) {
   };
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (answers.includes(answer)) {
+    if (mutation.isLoading) return;
+    if (answers.map((a) => a.name).includes(answer)) {
+      setWon(false);
       setError("Rasi sudah dicoba");
       return;
     }
-    if (dailyPuzzle && mode === "comfy") {
-      mutation.mutate({ puzzle: dailyPuzzle, guess: answer });
+    if (puzzle && mode === "comfy") {
+      mutation.mutate({ puzzle: puzzle, guess: answer });
     }
-    if (unlimitedPuzzle.data?.name && mode === "unlimited") {
+    if (puzzle && mode === "unlimited") {
       mutation.mutate({
-        puzzle: unlimitedPuzzle.data.name,
+        puzzle: puzzle,
         guess: answer,
         seed,
       });
@@ -100,15 +122,26 @@ function Answer({ mounted, mode }: AnswerProps) {
   return (
     <form onSubmit={handleSubmit} className="flex flex-col items-center gap-2">
       <Show when={!!error.length}>
-        <p className="text-sm font-semibold text-red-500">{error}</p>
+        <p
+          className={`text-sm font-semibold ${
+            won ? "text-green-500" : "text-red-500"
+          }`}
+        >
+          {error}
+        </p>
       </Show>
       <Input
         disabled={done}
         type="text"
         value={answer}
         onChange={handleChange}
+        autoFocus
       />
-      <SubmitButton mounted={mounted} answer={answer} />
+      <SubmitButton
+        isSubmitting={mutation.isLoading}
+        mounted={mounted}
+        answer={answer}
+      />
     </form>
   );
 }

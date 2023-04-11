@@ -68,11 +68,11 @@ export default function InfoComponent() {
                 </p>
               </li>
               <li>
-                <p className="w-fit rounded-md bg-zinc-100 px-2 py-1 text-green-500 shadow-md dark:bg-zinc-900">
+                <p className="w-fit rounded-md bg-zinc-100 px-2 py-1 text-cyan-500 shadow-md dark:bg-zinc-900">
                   DRACO
                 </p>
                 <p className="p-1">
-                  Warna hijau menunjukkan rasi tebakan sudah dekat
+                  Warna biru menunjukkan rasi tebakan sudah dekat
                 </p>
               </li>
             </ul>

@@ -16,8 +16,11 @@ function Guess({ mounted, mode }: GuessProps) {
     <div className="mx-auto w-[100%] max-w-[200px]">
       <ul>
         <For each={answers} fallback={<div>Something went wrong...</div>}>
-          {(answer) => (
-            <li className="flex h-8 items-end justify-center border-b border-b-slate-400 pb-1 dark:border-b-zinc-600">
+          {(answer, i) => (
+            <li
+              key={i}
+              className="flex h-8 items-end justify-center border-b border-b-slate-400 pb-1 dark:border-b-zinc-600"
+            >
               <Show
                 when={mounted}
                 fallback={
@@ -26,7 +29,19 @@ function Guess({ mounted, mode }: GuessProps) {
                   </Skeleton>
                 }
               >
-                <p>{answer}</p>
+                <p
+                  className={
+                    answer.closeness === -1
+                      ? "text-green-500"
+                      : answer.closeness < 3
+                      ? "text-cyan-500"
+                      : answer.closeness < 5
+                      ? "text-orange-500"
+                      : "text-red-500"
+                  }
+                >
+                  {answer.name}
+                </p>
               </Show>
             </li>
           )}

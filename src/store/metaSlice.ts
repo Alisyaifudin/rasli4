@@ -4,7 +4,14 @@ import { z } from "zod";
 
 // schema
 export const modeSchema = z.enum(["comfy", "unlimited"]);
-export const answerSchema = z.array(z.string().max(20)).length(6);
+export const answerSchema = z
+  .array(
+    z.object({
+      name: z.string().max(20),
+      closeness: z.number().min(0),
+    })
+  )
+  .length(6);
 export const doneSchema = z.boolean();
 export const historySchema = z.object({
   played: z.number().min(0),
@@ -31,13 +38,18 @@ interface State {
 interface MetaState {
   mode: Mode;
   comfy: State;
-  unlimited: State & { seed: string };
+  unlimited: State;
+  seed: string;
   mounted: boolean;
+  rotation: string;
 }
 
 // Define the initial state using that type
 const initialValue = {
-  answers: Array(6).fill(""),
+  answers: Array.from({ length: 6 }, () => ({
+    name: "",
+    closeness: 0,
+  })),
   puzzle: "",
   result: "Misteri",
   num: 0,
@@ -53,8 +65,10 @@ const initialValue = {
 const initialState: MetaState = {
   mode: "comfy",
   comfy: initialValue,
-  unlimited: { ...initialValue, seed: "" },
+  unlimited: initialValue,
+  seed: "",
   mounted: false,
+  rotation: "",
 };
 
 export const counterSlice = createSlice({
@@ -68,7 +82,7 @@ export const counterSlice = createSlice({
     },
     setAnswers: (
       state,
-      action: PayloadAction<{ comfy: string[]; unlimited: string[] }>
+      action: PayloadAction<{ comfy: Answers; unlimited: Answers }>
     ) => {
       state.comfy.answers = action.payload.comfy;
       state.unlimited.answers = action.payload.unlimited;
@@ -79,14 +93,14 @@ export const counterSlice = createSlice({
           unlimited: state.unlimited.answers,
         })
       );
-      let num = action.payload.comfy.filter((a) => a !== "").length;
+      let num = action.payload.comfy.filter((a) => a.name !== "").length;
       state.comfy.num = num;
-      num = action.payload.unlimited.filter((a) => a !== "").length;
+      num = action.payload.unlimited.filter((a) => a.name !== "").length;
       state.unlimited.num = num;
     },
     submitAnswer: (
       state,
-      action: PayloadAction<{ answer: string; mode: Mode }>
+      action: PayloadAction<{ answer: Answers[0]; mode: Mode }>
     ) => {
       const { answer, mode } = action.payload;
       state[mode].answers[state[mode].num] = answer;
@@ -162,7 +176,7 @@ export const counterSlice = createSlice({
       );
     },
     setSeed: (state, action: PayloadAction<string>) => {
-      state.unlimited.seed = action.payload;
+      state.seed = action.payload;
       localStorage.setItem("seed", action.payload);
     },
     setResult: (
@@ -195,7 +209,10 @@ export const counterSlice = createSlice({
     },
     reset: (state, action: PayloadAction<Mode>) => {
       const mode = action.payload;
-      state[mode].answers = Array(6).fill("");
+      state[mode].answers = Array.from({ length: 6 }, () => ({
+        name: "",
+        closeness: 0,
+      }));
       localStorage.setItem(
         "answers",
         JSON.stringify({
@@ -230,12 +247,16 @@ export const counterSlice = createSlice({
       );
       if (mode === "unlimited") {
         const seed = Math.random().toString();
-        state[mode].seed = seed;
+        state.seed = seed;
         localStorage.setItem("seed", seed);
       }
     },
     setMounted: (state, action: PayloadAction<boolean>) => {
       state.mounted = action.payload;
+    },
+    setRotation: (state, action: PayloadAction<string>) => {
+      state.rotation = action.payload;
+      localStorage.setItem("rotation", action.payload);
     },
   },
 });
@@ -253,6 +274,7 @@ export const {
   setResultMode,
   reset,
   setMounted,
+  setRotation,
 } = counterSlice.actions;
 
 export default counterSlice.reducer;
