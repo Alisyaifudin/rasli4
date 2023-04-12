@@ -7,7 +7,6 @@ import readCsv from "~/utils/read-csv";
 import { z } from "zod";
 import { skyToXY } from "~/utils/skyToXY";
 import path from "path";
-import seedrandom from "seedrandom";
 
 export const constellationSchema = z.object({
   name: z.string(),

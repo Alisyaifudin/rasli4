@@ -79,10 +79,20 @@ export function draw(
       startAngle: 0,
       endAngle: 2 * Math.PI,
       counterclockwise: false,
-      color: star.c,
+      color: "#000",
     };
-
+    // dark outer circle
+    if (!!lines.length) {
+      options.radius *= 2;
+      circle(ctx, options);
+      ctx.globalAlpha = 1;
+      options.radius /= 2;
+    }
+    // the star
+    options.color = star.c;
     circle(ctx, options);
+    ctx.globalAlpha = 1;
+    // the blur
     options.color = "#fff";
     options.radius = options.radius * 0.6;
     circle(ctx, options, 0.4);

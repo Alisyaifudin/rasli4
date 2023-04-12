@@ -1,7 +1,12 @@
 import React, { useEffect } from "react";
 import Show from "~/components/control-flow/Show";
 import { useAppDispatch, useAppSelector } from "~/hooks/redux";
-import { type Mode, finishGame, submitAnswer } from "~/store/metaSlice";
+import {
+  type Mode,
+  finishGame,
+  submitAnswer,
+  openGraph,
+} from "~/store/metaSlice";
 import { Input } from "~/components/ui/input";
 import { api } from "~/utils/api";
 import { useToast } from "~/hooks/use-toast";
@@ -39,6 +44,10 @@ function Answer({ mounted, mode }: AnswerProps) {
           submitAnswer({ answer: { name: answer, closeness: -1 }, mode })
         );
         setAnswer("");
+        if (mode === "comfy")
+          setTimeout(() => {
+            dispatch(openGraph(true));
+          }, 1000);
         return;
       }
       if (data.code === "NOT_FOUND") {
@@ -59,6 +68,9 @@ function Answer({ mounted, mode }: AnswerProps) {
         } else {
           setError("Gagal 😭");
           dispatch(finishGame({ mode, result: data.message }));
+          setTimeout(() => {
+            dispatch(openGraph(true));
+          }, 1000);
         }
         setWon(false);
       }

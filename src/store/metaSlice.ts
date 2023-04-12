@@ -1,6 +1,5 @@
 import { createSlice } from "@reduxjs/toolkit";
 import type { PayloadAction } from "@reduxjs/toolkit";
-import { WritableDraft } from "immer/dist/internal";
 import { z } from "zod";
 
 // schema
@@ -15,10 +14,9 @@ export const answerSchema = z
   .length(6);
 export const doneSchema = z.boolean();
 export const historySchema = z.object({
-  played: z.number().min(0),
-  won: z.number().min(0),
   currentStreak: z.number().min(0),
   maxStreak: z.number().min(0),
+  stats: z.array(z.number()).length(7),
 });
 
 // Define a type for the slice state
@@ -32,6 +30,7 @@ export const stateShema = z.object({
   history: historySchema,
   puzzle: z.string(),
   result: z.string(),
+  prev: z.boolean(),
 });
 
 type State = z.infer<typeof stateShema>;
@@ -42,6 +41,7 @@ export const metaSchema = z.object({
   unlimited: stateShema,
   seed: z.string(),
   mounted: z.boolean(),
+  openGraph: z.boolean(),
 });
 
 export type MetaState = z.infer<typeof metaSchema>;
@@ -57,11 +57,11 @@ const initialValue = {
   num: 0,
   done: false,
   history: {
-    played: 0,
-    won: 0,
     currentStreak: 0,
     maxStreak: 0,
+    stats: [0, 0, 0, 0, 0, 0, 0],
   },
+  prev: false,
 };
 
 const initialState: MetaState = {
@@ -70,6 +70,7 @@ const initialState: MetaState = {
   unlimited: initialValue,
   seed: "",
   mounted: false,
+  openGraph: false,
 };
 
 export const counterSlice = createSlice({
@@ -90,10 +91,6 @@ export const counterSlice = createSlice({
       updateState(mode, "answers", state[mode].answers);
       state[mode].num += 1;
       updateState(mode, "num", state[mode].num);
-      if (state[mode].num > 5) {
-        state[mode].done = true;
-        updateState(mode, "done", true);
-      }
     },
     finishGame: (
       state,
@@ -104,6 +101,23 @@ export const counterSlice = createSlice({
       updateState(mode, "done", true);
       state[mode].result = result;
       updateState(mode, "result", result);
+      const num = state[mode].num;
+      state[mode].history.stats[num] += 1;
+      if (state[mode].prev) {
+        state[mode].history.currentStreak += 1;
+        if (state[mode].history.currentStreak > state[mode].history.maxStreak) {
+          state[mode].history.maxStreak = state[mode].history.currentStreak;
+        }
+      } else {
+        state[mode].history.currentStreak = 1;
+      }
+      updateState(mode, "history", state[mode].history);
+      if (num < 6) {
+        state[mode].prev = true;
+      } else {
+        state[mode].prev = false;
+      }
+      updateState(mode, "prev", state[mode].prev);
     },
     reset: (state, action: PayloadAction<Mode>) => {
       const mode = action.payload;
@@ -134,6 +148,9 @@ export const counterSlice = createSlice({
       state[mode].puzzle = puzzle;
       updateState(mode, "puzzle", puzzle);
     },
+    openGraph: (state, action: PayloadAction<boolean>) => {
+      state.openGraph = action.payload;
+    },
   },
 });
 
@@ -146,6 +163,7 @@ export const {
   initialize,
   addSeed,
   addPuzzle,
+  openGraph,
 } = counterSlice.actions;
 
 export default counterSlice.reducer;
@@ -186,7 +204,8 @@ function resetState(mode: Mode) {
     const parsed = stateShema.safeParse(json);
     if (parsed.success) {
       const history = parsed.data.history;
-      const newstate = { ...initialValue, history };
+      const prev = parsed.data.prev;
+      const newstate = { ...initialValue, history, prev };
       localStorage.setItem(mode, JSON.stringify(newstate));
       return newstate;
     }
