@@ -1,47 +1,20 @@
 import Head from "next/head";
 import React, { useEffect } from "react";
 import Navbar from "~/components/Navbar";
-import { useAppDispatch, useAppSelector } from "~/hooks/redux";
+import { useAppDispatch } from "~/hooks/redux";
 import {
   modeSchema,
-  answerSchema as answerSchemaRaw,
-  doneSchema as doneSchemaRaw,
-  historySchema as historySchemaRaw,
   type Mode,
-  setRotation,
   reset,
+  stateShema,
+  mount,
+  initialize,
+  switchMode,
+  addSeed,
 } from "~/store/metaSlice";
-import {
-  setMode,
-  setAnswers,
-  setHistory,
-  setDone,
-  setPuzzle,
-  setSeed,
-  setResult,
-  setMounted,
-} from "~/store/metaSlice";
+import {} from "~/store/metaSlice";
 import { store } from "~/store/store";
 import { Provider } from "react-redux";
-import { z } from "zod";
-
-const answerSchema = z.object({
-  comfy: answerSchemaRaw,
-  unlimited: answerSchemaRaw,
-});
-const doneSchema = z.object({
-  comfy: doneSchemaRaw,
-  unlimited: doneSchemaRaw,
-});
-const historySchema = z.object({
-  comfy: historySchemaRaw,
-  unlimited: historySchemaRaw,
-});
-export const puzzleSchema = z.object({
-  comfy: z.string(),
-  unlimited: z.string(),
-});
-const resultSchema = puzzleSchema;
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -49,21 +22,21 @@ interface LayoutProps {
 
 function Layout({ children }: LayoutProps) {
   const dispatch = useAppDispatch();
-  const mounted = useAppSelector((state) => state.meta.mounted);
+  // useEffect(() => {
+  //   if (typeof window === "undefined" || mounted) {
+  //     return;
+  //   }
+  //   initialization(dispatch);
+  //   // mounted
+  //   dispatch(mount());
+  // }, [dispatch, mounted]);
+  // const a = window.localStorage.getItem("mode");
+  // console.log(a);
   useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
     initialization(dispatch);
-    // mounted
-    dispatch(setMounted(true));
-  }, [dispatch]);
-
-  useEffect(() => {
-    if (!mounted) return;
-    console.log("mounted", mounted);
-    nuke(dispatch);
-  }, [mounted, dispatch]);
+    dispatch(mount());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <>
@@ -87,69 +60,31 @@ export default function RootLayout({ children }: LayoutProps) {
 }
 
 function initialization(dispatch: ReturnType<typeof useAppDispatch>) {
+  //meta
+  initState("comfy", dispatch);
+  initState("unlimited", dispatch);
   // Mode
-  const mode_raw = localStorage.getItem("mode");
-  const parsedMode = modeSchema.safeParse(mode_raw);
-  let mode: Mode = "comfy";
-  if (!parsedMode.success) {
-    localStorage.setItem("mode", "comfy");
-  } else {
-    dispatch(setMode(parsedMode.data));
-    mode = parsedMode.data;
-  }
-  // History
-  const history_raw = localStorage.getItem("history") ?? "{}";
-  const parsedHistory = historySchema.safeParse(JSON.parse(history_raw));
-  if (parsedHistory.success) {
-    dispatch(setHistory(parsedHistory.data));
-  }
-  // dailypuzzle
-  const puzzle_raw = localStorage.getItem("puzzle");
-  const parsedPuzzle = puzzleSchema.safeParse(puzzle_raw);
-  if (parsedPuzzle.success) {
-    dispatch(setPuzzle({ puzzle: parsedPuzzle.data[mode], mode }));
-  }
-  // Answers
-  const answers_raw = localStorage.getItem("answers") ?? "{}";
-  const parsedAnswers = answerSchema.safeParse(JSON.parse(answers_raw));
-  if (parsedAnswers.success) {
-    dispatch(setAnswers(parsedAnswers.data));
-  }
-  // Done
-  const done_raw = localStorage.getItem("done") ?? "{}";
-  const parsedDone = doneSchema.safeParse(JSON.parse(done_raw));
-  if (parsedDone.success) {
-    dispatch(setDone(parsedDone.data));
-  }
-  // result
-  const result = localStorage.getItem("result") ?? "{}";
-  const parseResult = resultSchema.safeParse(JSON.parse(result));
-  if (parseResult.success) {
-    dispatch(setResult(parseResult.data));
+  const modeRaw = localStorage.getItem("mode");
+  const parsedMode = modeSchema.safeParse(modeRaw);
+  if (parsedMode.success) {
+    dispatch(switchMode(parsedMode.data));
   }
   // seed
   const seed = localStorage.getItem("seed") ?? Math.random().toString();
-  dispatch(setSeed(seed));
-  // rotation
-  const rotation = localStorage.getItem("rotation") ?? Math.random().toString();
-  dispatch(setRotation(rotation));
+  dispatch(addSeed(seed));
 }
 
-function nuke(dispatch: ReturnType<typeof useAppDispatch>) {
-  // Answers
-  const answers_raw = localStorage.getItem("answers") ?? "{}";
-  const parsedAnswers = answerSchema.safeParse(JSON.parse(answers_raw));
-  console.log(parsedAnswers);
-  if (!parsedAnswers.success) {
-    dispatch(reset("comfy"));
-    dispatch(reset("unlimited"));
-  }
-  // Done
-  const done_raw = localStorage.getItem("done") ?? "{}";
-  const parsedDone = doneSchema.safeParse(JSON.parse(done_raw));
-  console.log(parsedDone);
-  if (!parsedDone.success) {
-    dispatch(reset("comfy"));
-    dispatch(reset("unlimited"));
+function initState(mode: Mode, dispatch: ReturnType<typeof useAppDispatch>) {
+  const stateRaw = localStorage.getItem(mode);
+  if (stateRaw !== null) {
+    const stateJson: unknown = JSON.parse(stateRaw);
+    const parsed = stateShema.safeParse(stateJson);
+    if (parsed.success) {
+      dispatch(initialize({ mode: mode, state: parsed.data }));
+    } else {
+      dispatch(reset(mode));
+    }
+  } else {
+    dispatch(reset(mode));
   }
 }

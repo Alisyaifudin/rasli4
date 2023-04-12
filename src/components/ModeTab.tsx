@@ -1,6 +1,6 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { useAppDispatch, useAppSelector } from "~/hooks/redux";
-import { setMode } from "~/store/metaSlice";
+import { switchMode } from "~/store/metaSlice";
 
 function ModeTab() {
   const mode = useAppSelector((state) => state.meta.mode);
@@ -9,7 +9,7 @@ function ModeTab() {
   const handleChange = (value: string) => {
     if (["comfy", "unlimited"].includes(value)) {
       const val = value as "comfy" | "unlimited";
-      dispatch(setMode(val));
+      dispatch(switchMode(val));
     }
   };
   return (

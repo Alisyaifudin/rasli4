@@ -1,4 +1,4 @@
-import { type Mode, reset, setRotation } from "~/store/metaSlice";
+import { type Mode, reset } from "~/store/metaSlice";
 import Show from "~/components/control-flow/Show";
 import Skeleton from "~/components/aux/Skeleton";
 import { useAppDispatch, useAppSelector } from "~/hooks/redux";
@@ -63,9 +63,6 @@ function Unlimited({ answer, mode, isSubmitting }: ButtonProps) {
   const handleNext = () => {
     dispatch(reset(mode));
     utils.puzzle.getPuzzle.invalidate();
-    const rot = Math.floor(Math.random() * 4).toString();
-    dispatch(setRotation(rot))
-    localStorage.setItem("rotation", rot);
   };
   return (
     <div className="flex gap-1">

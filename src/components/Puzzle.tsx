@@ -1,11 +1,10 @@
 import Show from "~/components/control-flow/Show";
 import Skeleton from "~/components/aux/Skeleton";
-import { setPuzzle, type Mode, setRotation } from "~/store/metaSlice";
+import { addPuzzle, type Mode, reset } from "~/store/metaSlice";
 import { api } from "~/utils/api";
-import React, { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { draw } from "~/utils/draw";
 import { useAppDispatch, useAppSelector } from "~/hooks/redux";
-import { puzzleSchema } from "~/layouts/Layout";
 interface PuzzleProps {
   mounted: boolean;
   mode: Mode;
@@ -16,76 +15,36 @@ function Puzzle({ mounted }: PuzzleProps) {
   const seed = useAppSelector((state) => state.meta.seed);
   const mode = useAppSelector((state) => state.meta.mode);
   const done = useAppSelector((state) => state.meta[mode].done);
-  const rot = useAppSelector((state) => state.meta.rotation);
-  const dailyPuzzle = api.puzzle.getDailyPuzzle.useQuery(rot, {
-    onSuccess: (data) => {
-      if (data.name === null) return;
-      const puzzle_raw = localStorage.getItem("puzzle");
-      const parsedPuzzle = puzzleSchema.safeParse(puzzle_raw);
-      if (parsedPuzzle.success) {
-        localStorage.setItem(
-          "puzzle",
-          JSON.stringify({ ...parsedPuzzle.data, comfy: data.name })
-        );
-        if (parsedPuzzle.data[mode] !== data.name) {
-          const rot = (Math.random() * 4).toString();
-          dispatch(setRotation(rot));
-          localStorage.setItem("rotation", rot);
-        }
-      } else {
-        localStorage.setItem(
-          "puzzle",
-          JSON.stringify({ comfy: data.name, unlimited: "" })
-        );
-      }
-      dispatch(setPuzzle({ puzzle: data.name, mode: "comfy" }));
+  const puzzle = useAppSelector((state) => state.meta[mode].puzzle);
+  const getPuzzle = api.puzzle.getPuzzle.useQuery(
+    {
+      seed,
+      mode,
     },
-  });
-  const unlimitedPuzzle = api.puzzle.getPuzzle.useQuery(
-    { seed, rot },
     {
       onSuccess: (data) => {
         if (data.name === null) return;
-        const puzzle_raw = localStorage.getItem("puzzle");
-        const parsedPuzzle = puzzleSchema.safeParse(puzzle_raw);
-        if (parsedPuzzle.success) {
-          localStorage.setItem(
-            "puzzle",
-            JSON.stringify({ ...parsedPuzzle.data, unlimited: data.name })
-          );
-        } else {
-          localStorage.setItem(
-            "puzzle",
-            JSON.stringify({ comfy: "", unlimited: data.name })
-          );
+        if (mode === "comfy" && puzzle !== data.name) {
+          dispatch(reset(mode));
         }
-        dispatch(setPuzzle({ puzzle: data.name, mode: "unlimited" }));
+        dispatch(addPuzzle({ puzzle: data.name, mode }));
       },
     }
   );
-  const isLoading = dailyPuzzle.isLoading || unlimitedPuzzle.isLoading;
+  const isLoading = getPuzzle.isLoading;
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   useEffect(() => {
     if (!canvasRef.current || !mounted) return;
     const canvas = canvasRef.current;
     const context = canvas.getContext("2d");
     if (!context) return;
-    if (mode === "comfy") {
-      if (!dailyPuzzle?.data) return;
-      const stars = dailyPuzzle.data.stars;
-      const radius = dailyPuzzle.data.radius;
-      const lines = done ? dailyPuzzle.data.lines : [];
-      //Our draw come here
-      draw(context, stars, radius, lines);
-    } else {
-      if (!unlimitedPuzzle?.data || unlimitedPuzzle.data.name === null) return;
-      const stars = unlimitedPuzzle.data.stars;
-      const radius = unlimitedPuzzle.data.radius;
-      const lines = done ? unlimitedPuzzle.data.lines : [];
-      //Our draw come here
-      draw(context, stars, radius, lines);
-    }
-  }, [canvasRef, dailyPuzzle, done, mode, mounted, unlimitedPuzzle]);
+    if (!getPuzzle?.data) return;
+    const stars = getPuzzle.data.stars;
+    const radius = getPuzzle.data.radius;
+    const lines = done ? getPuzzle.data.lines : [];
+    //Our draw come here
+    draw(context, stars, radius, lines);
+  }, [canvasRef, getPuzzle, done, mode, mounted]);
 
   return (
     <>

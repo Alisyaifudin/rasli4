@@ -1,5 +1,5 @@
 import fs from "fs";
-import { ZodSchema } from "zod";
+import { type ZodSchema } from "zod";
 
 export default function readJson<T>(
   path: fs.PathOrFileDescriptor,

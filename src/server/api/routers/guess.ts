@@ -7,12 +7,6 @@ import path from "path";
 import { constellationSchema } from "./puzzle";
 import { distance } from "~/utils/distance";
 
-function capitalizeWords(str: string) {
-  return str.toLowerCase().replace(/(^|\s)\S/g, function (firstLetter) {
-    return firstLetter.toUpperCase();
-  });
-}
-
 export const guessRouter = createTRPCRouter({
   submit: publicProcedure
     .input(

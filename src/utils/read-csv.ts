@@ -1,5 +1,5 @@
 import csv from "csvtojson";
-import { ZodObject, ZodString, z, ZodOptional } from "zod";
+import { type ZodObject, type ZodString, z, type ZodOptional } from "zod";
 
 export default async function readCsv<
   T extends Record<string, ZodString | ZodOptional<ZodString>>

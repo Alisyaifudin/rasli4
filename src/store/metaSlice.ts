@@ -1,5 +1,6 @@
 import { createSlice } from "@reduxjs/toolkit";
 import type { PayloadAction } from "@reduxjs/toolkit";
+import { WritableDraft } from "immer/dist/internal";
 import { z } from "zod";
 
 // schema
@@ -8,7 +9,7 @@ export const answerSchema = z
   .array(
     z.object({
       name: z.string().max(20),
-      closeness: z.number().min(0),
+      closeness: z.number().min(-1),
     })
   )
   .length(6);
@@ -22,27 +23,28 @@ export const historySchema = z.object({
 
 // Define a type for the slice state
 export type Mode = z.infer<typeof modeSchema>;
-type History = z.infer<typeof historySchema>;
-type Done = z.infer<typeof doneSchema>;
 type Answers = z.infer<typeof answerSchema>;
 
-interface State {
-  answers: Answers;
-  num: number;
-  done: Done;
-  history: History;
-  puzzle: string;
-  result: string;
-}
+export const stateShema = z.object({
+  answers: answerSchema,
+  num: z.number().min(0),
+  done: z.boolean(),
+  history: historySchema,
+  puzzle: z.string(),
+  result: z.string(),
+});
 
-interface MetaState {
-  mode: Mode;
-  comfy: State;
-  unlimited: State;
-  seed: string;
-  mounted: boolean;
-  rotation: string;
-}
+type State = z.infer<typeof stateShema>;
+
+export const metaSchema = z.object({
+  mode: modeSchema,
+  comfy: stateShema,
+  unlimited: stateShema,
+  seed: z.string(),
+  mounted: z.boolean(),
+});
+
+export type MetaState = z.infer<typeof metaSchema>;
 
 // Define the initial state using that type
 const initialValue = {
@@ -68,7 +70,6 @@ const initialState: MetaState = {
   unlimited: initialValue,
   seed: "",
   mounted: false,
-  rotation: "",
 };
 
 export const counterSlice = createSlice({
@@ -76,27 +77,9 @@ export const counterSlice = createSlice({
   // `createSlice` will infer the state type from the `initialState` argument
   initialState,
   reducers: {
-    setMode: (state, action: PayloadAction<Mode>) => {
+    switchMode: (state, action: PayloadAction<Mode>) => {
       state.mode = action.payload;
-      localStorage.setItem("mode", action.payload);
-    },
-    setAnswers: (
-      state,
-      action: PayloadAction<{ comfy: Answers; unlimited: Answers }>
-    ) => {
-      state.comfy.answers = action.payload.comfy;
-      state.unlimited.answers = action.payload.unlimited;
-      localStorage.setItem(
-        "answers",
-        JSON.stringify({
-          comfy: state.comfy.answers,
-          unlimited: state.unlimited.answers,
-        })
-      );
-      let num = action.payload.comfy.filter((a) => a.name !== "").length;
-      state.comfy.num = num;
-      num = action.payload.unlimited.filter((a) => a.name !== "").length;
-      state.unlimited.num = num;
+      updateMeta("mode", action.payload);
     },
     submitAnswer: (
       state,
@@ -104,177 +87,110 @@ export const counterSlice = createSlice({
     ) => {
       const { answer, mode } = action.payload;
       state[mode].answers[state[mode].num] = answer;
-      localStorage.setItem(
-        "answers",
-        JSON.stringify({
-          comfy: state.comfy.answers,
-          unlimited: state.unlimited.answers,
-        })
-      );
+      updateState(mode, "answers", state[mode].answers);
       state[mode].num += 1;
+      updateState(mode, "num", state[mode].num);
       if (state[mode].num > 5) {
         state[mode].done = true;
-        localStorage.setItem(
-          "done",
-          JSON.stringify({
-            comfy: state.comfy.done,
-            unlimited: state.unlimited.done,
-          })
-        );
+        updateState(mode, "done", true);
       }
     },
-    setHistory: (
+    finishGame: (
       state,
-      action: PayloadAction<{ comfy: History; unlimited: History }>
+      action: PayloadAction<{ mode: Mode; result: string }>
     ) => {
-      state.comfy.history = action.payload.comfy;
-      state.unlimited.history = action.payload.unlimited;
-      localStorage.setItem(
-        "history",
-        JSON.stringify({
-          comfy: state.comfy.history,
-          unlimited: state.unlimited.history,
-        })
-      );
-    },
-    setDone: (
-      state,
-      action: PayloadAction<{ comfy: boolean; unlimited: boolean }>
-    ) => {
-      state.comfy.done = action.payload.comfy;
-      state.unlimited.done = action.payload.unlimited;
-      localStorage.setItem(
-        "done",
-        JSON.stringify({
-          comfy: state.comfy.done,
-          unlimited: state.unlimited.done,
-        })
-      );
-    },
-    finishGame: (state, action: PayloadAction<Mode>) => {
-      state[action.payload].done = true;
-      localStorage.setItem(
-        "done",
-        JSON.stringify({
-          comfy: state.comfy.done,
-          unlimited: state.unlimited.done,
-        })
-      );
-    },
-    setPuzzle: (
-      state,
-      action: PayloadAction<{ puzzle: string; mode: Mode }>
-    ) => {
-      const { puzzle, mode } = action.payload;
-      state[mode].puzzle = puzzle;
-      localStorage.setItem(
-        "puzzle",
-        JSON.stringify({
-          comfy: state.comfy.puzzle,
-          unlimited: state.unlimited.puzzle,
-        })
-      );
-    },
-    setSeed: (state, action: PayloadAction<string>) => {
-      state.seed = action.payload;
-      localStorage.setItem("seed", action.payload);
-    },
-    setResult: (
-      state,
-      action: PayloadAction<{ comfy: string; unlimited: string }>
-    ) => {
-      state.comfy.result = action.payload.comfy;
-      state.unlimited.result = action.payload.unlimited;
-      localStorage.setItem(
-        "result",
-        JSON.stringify({
-          comfy: state.comfy.result,
-          unlimited: state.unlimited.result,
-        })
-      );
-    },
-    setResultMode: (
-      state,
-      action: PayloadAction<{ result: string; mode: Mode }>
-    ) => {
-      const { result, mode } = action.payload;
+      const { mode, result } = action.payload;
+      state[mode].done = true;
+      updateState(mode, "done", true);
       state[mode].result = result;
-      localStorage.setItem(
-        "result",
-        JSON.stringify({
-          comfy: state.comfy.result,
-          unlimited: state.unlimited.result,
-        })
-      );
+      updateState(mode, "result", result);
     },
     reset: (state, action: PayloadAction<Mode>) => {
       const mode = action.payload;
-      state[mode].answers = Array.from({ length: 6 }, () => ({
-        name: "",
-        closeness: 0,
-      }));
-      localStorage.setItem(
-        "answers",
-        JSON.stringify({
-          comfy: state.comfy.answers,
-          unlimited: state.unlimited.answers,
-        })
-      );
-      state[mode].num = 0;
-      state[mode].done = false;
-      localStorage.setItem(
-        "done",
-        JSON.stringify({
-          comfy: state.comfy.done,
-          unlimited: state.unlimited.done,
-        })
-      );
-      state[mode].puzzle = "";
-      localStorage.setItem(
-        "puzzle",
-        JSON.stringify({
-          comfy: state.comfy.puzzle,
-          unlimited: state.unlimited.puzzle,
-        })
-      );
-      state[mode].result = "Misteri";
-      localStorage.setItem(
-        "result",
-        JSON.stringify({
-          comfy: state.comfy.result,
-          unlimited: state.unlimited.result,
-        })
-      );
+      const newstate = resetState(mode);
+      state[mode] = newstate;
       if (mode === "unlimited") {
         const seed = Math.random().toString();
         state.seed = seed;
-        localStorage.setItem("seed", seed);
+        updateMeta("seed", seed);
       }
     },
-    setMounted: (state, action: PayloadAction<boolean>) => {
-      state.mounted = action.payload;
+    mount: (state) => {
+      state.mounted = true;
     },
-    setRotation: (state, action: PayloadAction<string>) => {
-      state.rotation = action.payload;
-      localStorage.setItem("rotation", action.payload);
+    initialize: (st, action: PayloadAction<{ mode: Mode; state: State }>) => {
+      const { mode, state } = action.payload;
+      st[mode] = state;
+    },
+    addSeed: (state, action: PayloadAction<string>) => {
+      state.seed = action.payload;
+      updateMeta("seed", action.payload);
+    },
+    addPuzzle: (
+      state,
+      action: PayloadAction<{ mode: Mode; puzzle: string }>
+    ) => {
+      const { mode, puzzle } = action.payload;
+      state[mode].puzzle = puzzle;
+      updateState(mode, "puzzle", puzzle);
     },
   },
 });
 
 export const {
-  setMode,
+  switchMode,
   submitAnswer,
-  setAnswers,
-  setHistory,
-  setDone,
-  setPuzzle,
   finishGame,
-  setSeed,
-  setResult,
-  setResultMode,
   reset,
-  setMounted,
-  setRotation,
+  mount,
+  initialize,
+  addSeed,
+  addPuzzle,
 } = counterSlice.actions;
 
 export default counterSlice.reducer;
+
+function updateMeta<T extends Exclude<keyof MetaState, "comfy" | "unlimited">>(
+  key: T,
+  value: MetaState[T]
+) {
+  localStorage.setItem(
+    key,
+    typeof value === "boolean" ? JSON.stringify(value) : value
+  );
+}
+
+function updateState<T extends keyof State>(
+  mode: Mode,
+  key: T,
+  value: State[T]
+) {
+  const local = localStorage.getItem(mode);
+  if (local !== null) {
+    const json: unknown = JSON.parse(local);
+    const parsed = stateShema.safeParse(json);
+    if (parsed.success) {
+      const state = parsed.data;
+      state[key] = value;
+      localStorage.setItem(mode, JSON.stringify(state));
+      return;
+    }
+  }
+  localStorage.setItem(mode, JSON.stringify(initialValue));
+}
+
+function resetState(mode: Mode) {
+  const local = localStorage.getItem(mode);
+  if (local !== null) {
+    const json: unknown = JSON.parse(local);
+    const parsed = stateShema.safeParse(json);
+    if (parsed.success) {
+      const history = parsed.data.history;
+      const newstate = { ...initialValue, history };
+      localStorage.setItem(mode, JSON.stringify(newstate));
+      return newstate;
+    }
+  }
+  localStorage.setItem(mode, JSON.stringify(initialValue));
+  return initialValue;
+}

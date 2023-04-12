@@ -1,12 +1,7 @@
 import React, { useEffect } from "react";
 import Show from "~/components/control-flow/Show";
 import { useAppDispatch, useAppSelector } from "~/hooks/redux";
-import {
-  type Mode,
-  finishGame,
-  setResultMode,
-  submitAnswer,
-} from "~/store/metaSlice";
+import { type Mode, finishGame, submitAnswer } from "~/store/metaSlice";
 import { Input } from "~/components/ui/input";
 import { api } from "~/utils/api";
 import { useToast } from "~/hooks/use-toast";
@@ -36,35 +31,22 @@ function Answer({ mounted, mode }: AnswerProps) {
   const mutation = api.guess.submit.useMutation({
     onSuccess: (data) => {
       if (data.correct) {
-        toast({
-          title: "Benar",
-          variant: "success",
-        });
+        toast({ title: "Benar", variant: "success" });
         setError("Keren 🥳");
         setWon(true);
-        dispatch(finishGame(mode));
+        dispatch(finishGame({ mode, result: data.message }));
         dispatch(
-          submitAnswer({
-            answer: { name: answer, closeness: -1 },
-            mode,
-          })
+          submitAnswer({ answer: { name: answer, closeness: -1 }, mode })
         );
-        dispatch(setResultMode({ result: data.message, mode }));
         setAnswer("");
         return;
       }
       if (data.code === "NOT_FOUND") {
-        toast({
-          title: "Rasi tidak ada",
-          variant: "destructive",
-        });
+        toast({ title: "Rasi tidak ada", variant: "destructive" });
         setWon(false);
         setError("Rasi tidak ada");
       } else if (data.code === "INCORRECT") {
-        toast({
-          title: "Salah",
-          variant: "destructive",
-        });
+        toast({ title: "Salah", variant: "destructive" });
         setAnswer("");
         dispatch(
           submitAnswer({
@@ -76,7 +58,7 @@ function Answer({ mounted, mode }: AnswerProps) {
           setError("Rasi tidak cocok");
         } else {
           setError("Gagal 😭");
-          dispatch(setResultMode({ result: data.message, mode }));
+          dispatch(finishGame({ mode, result: data.message }));
         }
         setWon(false);
       }
